@@ -1,26 +1,15 @@
 "use client"
 
 import { createContext, useContext, useState, type ReactNode } from "react"
+import { CartItem, CartState } from "@/types/cart"
+import { FoodType } from "@/types/food"
 
-export interface CartItem {
-  id: string
-  title: string
-  price: number
-  quantity: number
-  image: string
-  type: "Veg" | "Non Veg"
-}
-
-interface CartContextType {
-  items: CartItem[]
+interface CartContextType extends CartState {
   addItem: (item: Omit<CartItem, "quantity">) => void
   removeItem: (id: string) => void
   increaseQuantity: (id: string) => void
   decreaseQuantity: (id: string) => void
   clearCart: () => void
-  subtotal: number
-  tax: number
-  total: number
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -97,3 +86,5 @@ export function useCart() {
   }
   return context
 }
+
+export type { CartItem }

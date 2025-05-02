@@ -90,47 +90,7 @@ export function SettingsContent() {
                 <CardDescription>Update your restaurant details</CardDescription>
               </CardHeader>
               <CardContent>
-                <Form>
-                  <div className="space-y-4">
-                    <FormField
-                      name="restaurantName"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>Restaurant Name</FormLabel>
-                          <FormControl>
-                            <Input defaultValue="Chili Restaurant" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      name="address"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>Address</FormLabel>
-                          <FormControl>
-                            <Input defaultValue="123 Main Street, City" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      name="phone"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input defaultValue="+1 234 567 8900" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button className="w-full">Save Changes</Button>
-                  </div>
-                </Form>
+                
               </CardContent>
             </Card>
 
@@ -143,60 +103,7 @@ export function SettingsContent() {
                 <CardDescription>Configure tax rates and billing settings</CardDescription>
               </CardHeader>
               <CardContent>
-                <Form>
-                  <div className="space-y-4">
-                    <FormField
-                      name="taxRate"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>Tax Rate (%)</FormLabel>
-                          <FormControl>
-                            <Input type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      name="currency"
-                      render={() => (
-                        <FormItem>
-                          <FormLabel>Currency</FormLabel>
-                          <Select value={currency} onValueChange={setCurrency}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select currency" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="USD">USD ($)</SelectItem>
-                              <SelectItem value="EUR">EUR (€)</SelectItem>
-                              <SelectItem value="GBP">GBP (£)</SelectItem>
-                              <SelectItem value="JPY">JPY (¥)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      name="printReceipts"
-                      render={() => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                          <div className="space-y-0.5">
-                            <FormLabel>Automatic Receipt Printing</FormLabel>
-                            <FormDescription>Print receipts automatically after each order</FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch checked={printReceipts} onCheckedChange={setPrintReceipts} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button className="w-full">Save Changes</Button>
-                  </div>
-                </Form>
+                
               </CardContent>
             </Card>
           </div>

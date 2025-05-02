@@ -1,9 +1,10 @@
 "use client"
 
 import { FoodCard } from "./food-card"
+import { FoodItem } from "@/types/food"
 
 // Food items with real images and categories
-export const foodItems = [
+export const foodItems: FoodItem[] = [
   {
     id: "food-1",
     image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=2070&auto=format&fit=crop",

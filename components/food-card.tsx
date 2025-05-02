@@ -4,16 +4,9 @@ import { Card } from "@/components/ui/card"
 import { useCart } from "@/context/cart-context"
 import { useToast } from "@/components/ui/use-toast"
 import { useCurrency, formatPrice } from "@/context/currency-context"
+import { FoodItem } from "@/types/food"
 
-interface FoodCardProps {
-  id: string
-  image: string
-  title: string
-  price: number
-  discount?: number
-  type: "Veg" | "Non Veg"
-  category: string
-}
+type FoodCardProps = FoodItem
 
 export function FoodCard({ id, image, title, price, discount, type, category }: FoodCardProps) {
   const { addItem } = useCart()
