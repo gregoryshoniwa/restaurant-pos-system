@@ -287,7 +287,7 @@ export function Cart() {
         onOpenChange={(open) => {
           setIsOrderDialogOpen(open)
           if (!open) {
-            setIsProcessing(false)
+            setIsProcessing(false);
           }
         }}
       >
@@ -331,7 +331,7 @@ export function Cart() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOrderDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {setIsOrderDialogOpen(false); setIsProcessing(false);}}>
               Cancel
             </Button>
             <Button
