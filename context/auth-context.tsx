@@ -15,22 +15,34 @@ interface AuthState {
   refreshToken: string | null
   user: User | null
   isAuthenticated: boolean
+  environment: "live" | "dev"
 }
+
+type Environment = "live" | "dev"
 
 interface AuthContextType {
   authState: AuthState
+  environment: Environment
+  setEnvironment: (env: Environment) => void
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
+}
+
+const API_URLS = {
+  live: "https://live.npg.co.zw",
+  dev: "https://dev.npg.co.zw"
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [environment, setEnvironment] = useState<Environment>("live")
   const [authState, setAuthState] = useState<AuthState>({
     token: null,
     refreshToken: null,
     user: null,
     isAuthenticated: false,
+    environment: "live"
   })
 
   // Load auth state from localStorage on initial render
@@ -49,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch("https://live.npg.co.zw/api/v1/auth/sign-in", {
+      const response = await fetch(`${API_URLS[environment]}/api/v1/auth/sign-in`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -57,13 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       })
 
+      const data = await response.json()
+      
       if (!response.ok) {
-        throw new Error(`Authentication failed: ${response.status}`)
+        throw new Error(data.message || `Authentication failed: ${response.status}`)
       }
 
-      const data = await response.json()
-
-      const newAuthState = {
+      const newAuthState: AuthState = {
         token: data.token,
         refreshToken: data.refreshToken,
         user: {
@@ -74,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user_id: data.user_id,
         },
         isAuthenticated: true,
+        environment
       }
 
       setAuthState(newAuthState)
@@ -94,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshToken: null,
       user: null,
       isAuthenticated: false,
+      environment: "live"
     })
     localStorage.removeItem("auth")
   }
@@ -102,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         authState,
+        environment,
+        setEnvironment,
         login,
         logout,
       }}

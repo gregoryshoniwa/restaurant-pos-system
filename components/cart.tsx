@@ -13,15 +13,83 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { useCurrency, formatPrice } from "@/context/currency-context"
+import { useAuth } from "@/context/auth-context"
+import { LoginDialog } from "./login-dialog"
 
 export function Cart() {
   const { items, removeItem, increaseQuantity, decreaseQuantity, clearCart, subtotal, tax, total } = useCart()
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null)
+  const [showLoginDialog, setShowLoginDialog] = useState(false)
   const { toast } = useToast()
+  const { authState } = useAuth()
+  const { currency, rate } = useCurrency()
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrderClick = () => {
+    if (!authState.isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please login to place an order",
+        variant: "destructive",
+      })
+      setShowLoginDialog(true)
+      return
+    }
+    
+    if (!paymentMethod) {
+      toast({
+        title: "Select Payment Method",
+        description: "Please choose your preferred payment method: Cash, Card, or QR Code",
+        variant: "destructive",
+        duration: 3000,
+      })
+      return
+    }
+    
+    setIsOrderDialogOpen(true)
+  }
+
+  const generatePaymentToken = async () => {
+    try {
+      const baseUrl = authState.environment === 'dev' ? 'https://dev.npg.co.zw' : 'https://live.npg.co.zw'
+      const response = await fetch(`${baseUrl}/api/v1/transaction/u/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authState.token}`
+        },
+        body: JSON.stringify({
+          amount: total.toFixed(2),
+          currency: currency
+        })
+      })
+
+      const data = await response.json()
+      
+      if (response.status === 401) {
+        toast({
+          title: "Session Expired",
+          description: "Please login again to continue",
+          variant: "destructive",
+        })
+        setShowLoginDialog(true)
+        throw new Error("Session expired")
+      }
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to generate payment token')
+      }
+
+      return data.data.url
+    } catch (error) {
+      console.error('Payment token error:', error)
+      throw error
+    }
+  }
+
+  const handlePlaceOrder = async () => {
     if (items.length === 0) {
       toast({
         title: "Cart is empty",
@@ -31,29 +99,24 @@ export function Cart() {
       return
     }
 
-    if (!paymentMethod) {
-      toast({
-        title: "Payment method required",
-        description: "Please select a payment method to continue.",
-        variant: "destructive",
-      })
-      return
-    }
-
     setIsProcessing(true)
 
-    // Simulate order processing
-    setTimeout(() => {
-      setIsProcessing(false)
-      setIsOrderDialogOpen(false)
+    try {
+      const paymentUrl = await generatePaymentToken()
       clearCart()
-
+      setIsOrderDialogOpen(false)
+      window.location.href = paymentUrl
+    } catch (error) {
+      if (error instanceof Error && error.message === "Session expired") {
+        return // Login dialog is already shown
+      }
       toast({
-        title: "Order placed successfully!",
-        description: `Your order has been placed using ${paymentMethod}.`,
-        variant: "default",
+        title: "Payment Error",
+        description: error instanceof Error ? error.message : "Failed to process payment",
+        variant: "destructive",
       })
-    }, 1500)
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -92,7 +155,7 @@ export function Cart() {
                   </Button>
                 </div>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-green-600 font-bold">${item.price.toFixed(2)}</span>
+                  <span className="text-green-600 font-bold">{formatPrice(item.price, currency, rate)}</span>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
@@ -123,73 +186,111 @@ export function Cart() {
         <div className="space-y-2 mb-4">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Sub Total</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>{formatPrice(subtotal, currency, rate)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Tax 5%</span>
-            <span>${tax.toFixed(2)}</span>
+            <span>{formatPrice(tax, currency, rate)}</span>
           </div>
           <div className="flex justify-between font-bold">
             <span>Total Amount</span>
-            <span>${total.toFixed(2)}</span>
+            <span>{formatPrice(total, currency, rate)}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-6">
           <Button
             variant={paymentMethod === "Cash" ? "secondary" : "outline"}
-            className={`flex flex-col items-center py-3 ${
+            className={`relative flex flex-col items-center py-4 h-auto transition-all duration-200 ${
               paymentMethod === "Cash"
-                ? "bg-green-50 text-green-600 border-green-200 shadow-sm"
-                : "hover:bg-green-50 hover:text-green-600 transition-colors"
+                ? "bg-green-50 text-green-600 border-green-200 shadow-md scale-[1.02] z-10"
+                : "hover:bg-green-50/80 hover:text-green-600 hover:scale-[1.02] hover:shadow-md active:scale-100"
             }`}
             onClick={() => setPaymentMethod("Cash")}
           >
-            <div className={`p-2 rounded-full mb-1 ${paymentMethod === "Cash" ? "bg-green-100" : "bg-gray-100"}`}>
-              <Banknote className={`h-5 w-5 ${paymentMethod === "Cash" ? "text-green-600" : "text-gray-600"}`} />
+            <div 
+              className={`p-3 rounded-full mb-2 transition-all duration-200 ${
+                paymentMethod === "Cash" 
+                  ? "bg-green-100 shadow-inner" 
+                  : "bg-gray-50"
+              }`}
+            >
+              <Banknote className={`h-6 w-6 transition-colors ${
+                paymentMethod === "Cash" ? "text-green-600" : "text-gray-600"
+              }`} />
             </div>
-            <span className="text-xs font-medium">Cash</span>
+            <span className={`text-sm font-semibold transition-colors ${
+              paymentMethod === "Cash" ? "text-green-600" : "text-gray-600"
+            }`}>Cash</span>
           </Button>
           <Button
             variant={paymentMethod === "Card" ? "secondary" : "outline"}
-            className={`flex flex-col items-center py-3 ${
+            className={`relative flex flex-col items-center py-4 h-auto transition-all duration-200 ${
               paymentMethod === "Card"
-                ? "bg-blue-50 text-blue-600 border-blue-200 shadow-sm"
-                : "hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                ? "bg-blue-50 text-blue-600 border-blue-200 shadow-md scale-[1.02] z-10"
+                : "hover:bg-blue-50/80 hover:text-blue-600 hover:scale-[1.02] hover:shadow-md active:scale-100"
             }`}
             onClick={() => setPaymentMethod("Card")}
           >
-            <div className={`p-2 rounded-full mb-1 ${paymentMethod === "Card" ? "bg-blue-100" : "bg-gray-100"}`}>
-              <CreditCard className={`h-5 w-5 ${paymentMethod === "Card" ? "text-blue-600" : "text-gray-600"}`} />
+            <div 
+              className={`p-3 rounded-full mb-2 transition-all duration-200 ${
+                paymentMethod === "Card" 
+                  ? "bg-blue-100 shadow-inner" 
+                  : "bg-gray-50"
+              }`}
+            >
+              <CreditCard className={`h-6 w-6 transition-colors ${
+                paymentMethod === "Card" ? "text-blue-600" : "text-gray-600"
+              }`} />
             </div>
-            <span className="text-xs font-medium">Card</span>
+            <span className={`text-sm font-semibold transition-colors ${
+              paymentMethod === "Card" ? "text-blue-600" : "text-gray-600"
+            }`}>Card</span>
           </Button>
           <Button
             variant={paymentMethod === "QR Code" ? "secondary" : "outline"}
-            className={`flex flex-col items-center py-3 ${
+            className={`relative flex flex-col items-center py-4 h-auto transition-all duration-200 ${
               paymentMethod === "QR Code"
-                ? "bg-purple-50 text-purple-600 border-purple-200 shadow-sm"
-                : "hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                ? "bg-purple-50 text-purple-600 border-purple-200 shadow-md scale-[1.02] z-10"
+                : "hover:bg-purple-50/80 hover:text-purple-600 hover:scale-[1.02] hover:shadow-md active:scale-100"
             }`}
             onClick={() => setPaymentMethod("QR Code")}
           >
-            <div className={`p-2 rounded-full mb-1 ${paymentMethod === "QR Code" ? "bg-purple-100" : "bg-gray-100"}`}>
-              <QrCode className={`h-5 w-5 ${paymentMethod === "QR Code" ? "text-purple-600" : "text-gray-600"}`} />
+            <div 
+              className={`p-3 rounded-full mb-2 transition-all duration-200 ${
+                paymentMethod === "QR Code" 
+                  ? "bg-purple-100 shadow-inner" 
+                  : "bg-gray-50"
+              }`}
+            >
+              <QrCode className={`h-6 w-6 transition-colors ${
+                paymentMethod === "QR Code" ? "text-purple-600" : "text-gray-600"
+              }`} />
             </div>
-            <span className="text-xs font-medium">QR Code</span>
+            <span className={`text-sm font-semibold transition-colors ${
+              paymentMethod === "QR Code" ? "text-purple-600" : "text-gray-600"
+            }`}>QR Code</span>
           </Button>
         </div>
 
         <Button
           className="w-full bg-green-600 hover:bg-green-700 text-white h-12"
-          onClick={() => setIsOrderDialogOpen(true)}
+          onClick={handlePlaceOrderClick}
           disabled={items.length === 0}
         >
           Place Order
         </Button>
       </div>
 
-      <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
+      <Dialog 
+        open={isOrderDialogOpen} 
+        onOpenChange={(open) => {
+          setIsOrderDialogOpen(open)
+          if (!open) {
+            setIsProcessing(false)
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Order</DialogTitle>
@@ -204,7 +305,7 @@ export function Cart() {
                   <span>
                     {item.title} x{item.quantity}
                   </span>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                  <span>{formatPrice(item.price * item.quantity, currency, rate)}</span>
                 </div>
               ))}
             </div>
@@ -212,15 +313,15 @@ export function Cart() {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>{formatPrice(subtotal, currency, rate)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Tax (5%)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>{formatPrice(tax, currency, rate)}</span>
               </div>
               <div className="flex justify-between font-bold">
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{formatPrice(total, currency, rate)}</span>
               </div>
               <div className="flex justify-between text-sm pt-2 border-t">
                 <span>Payment Method</span>
@@ -243,6 +344,7 @@ export function Cart() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
     </div>
   )
 }
